@@ -9,6 +9,8 @@ import pyjokes  # For some really bad jokes
 from playsound import playsound  # To playsound
 import webbrowser
 import wikipedia
+import requests
+import pyowm
 import keyboard  # To get keyboard
 
 name_file = open("Assistant_name", "r")
@@ -17,6 +19,17 @@ name_assistant = name_file.read()
 engine = pyttsx3.init('sapi5')
 voices = engine.getProperty('voices')
 engine.setProperty('voice', voices[1].id)
+
+
+def get_location():
+    """ Function To Print GeoIP Latitude & Longitude """
+    ip_request = requests.get('https://get.geojs.io/v1/ip.json')
+    my_ip = ip_request.json()['ip']
+    geo_request = requests.get('https://get.geojs.io/v1/ip/geo/' +my_ip + '.json')
+    geo_data = geo_request.json()
+    geo = geo_data['city']
+    return geo
+
 
 def speak(text):
     engine.say(text)
@@ -155,6 +168,48 @@ def process_audio():
                 statement = statement.replace("note this", "")
                 note(statement)
 
+            if 'open stackoverflow' in statement:
+                speak('opening stackoverflow')
+                webbrowser.open('stackoverflow.com')
+
+            if 'weather' in statement:
+                city=get_location()
+                owm = pyowm.OWM('api-key')  # open weather map API key
+                # current weather forecast
+                loc = owm.weather_at_place(city)
+                weather = loc.get_weather()
+                # status
+                status = weather.get_detailed_status()
+                speak({status} in {city})
+                # temperature
+                temp = weather.get_temperature(unit='celsius')
+                for key, val in temp.items():
+                    if key == 'temp':
+                        speak("current temperature is {val} degree celcius")
+                # humidity, wind, rain, snow
+                humidity = weather.get_humidity()
+                wind = weather.get_wind()
+                speak('humidity is {humidity} grams per cubic meter')
+                speak('wind {wind}')
+                # sun rise and sun set
+                sr = weather.get_sunrise_time(timeformat='iso')
+                ss = weather.get_sunset_time(timeformat='iso')
+                speak('SunRise time is {sr}')
+                speak('SunSet time is {ss}')
+                # clouds and rain
+                loc = owm.three_hours_forecast(city)
+                clouds = str(loc.will_have_clouds())
+                rain = str(loc.will_have_rain())
+                if clouds == 'True':
+                    speak("It may have clouds in next 5 days")
+                else:
+                    speak("It may not have clouds in next 5 days")
+                if rain == 'True':
+                    speak("It may rain in next 5 days")
+                else:
+                    speak("It may not rain in next 5 days")
+
+
             if 'wikipedia' in statement:
                 if 'open wikipedia' in statement:
                     webbrowser.open('wikipedia.com')
@@ -239,3 +294,4 @@ def main_screen():
 
 
 main_screen()
+
